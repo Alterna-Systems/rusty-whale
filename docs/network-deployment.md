@@ -55,18 +55,18 @@ baud = 115200
 
 [channels_config.telegram]
 bot_token = "YOUR_BOT_TOKEN"
-allowed_users = ["*"]
+allowed_users = []
 
 [gateway]
 host = "127.0.0.1"
-port = 8080
+port = 3000
 allow_public_bind = false
 ```
 
 ### 2.4 Run Daemon (Local Only)
 
 ```bash
-zeroclaw daemon --host 127.0.0.1 --port 8080
+zeroclaw daemon --host 127.0.0.1 --port 3000
 ```
 
 - Gateway binds to `127.0.0.1` — not reachable from other machines
@@ -84,12 +84,12 @@ To allow other devices on your LAN to hit the gateway (e.g. for pairing or webho
 ```toml
 [gateway]
 host = "0.0.0.0"
-port = 8080
+port = 3000
 allow_public_bind = true
 ```
 
 ```bash
-zeroclaw daemon --host 0.0.0.0 --port 8080
+zeroclaw daemon --host 0.0.0.0 --port 3000
 ```
 
 **Security:** `allow_public_bind = true` exposes the gateway to your local network. Only use on trusted LANs.
@@ -100,7 +100,7 @@ If you need a **public URL** (e.g. WhatsApp webhook, external clients):
 
 1. Run gateway on localhost:
    ```bash
-   zeroclaw daemon --host 127.0.0.1 --port 8080
+   zeroclaw daemon --host 127.0.0.1 --port 3000
    ```
 
 2. Start a tunnel:
@@ -127,10 +127,31 @@ Telegram uses **long-polling** by default:
 ```toml
 [channels_config.telegram]
 bot_token = "YOUR_BOT_TOKEN"
-allowed_users = ["*"]   # or specific @usernames / user IDs
+allowed_users = []            # deny-by-default, bind identities explicitly
 ```
 
 Run `zeroclaw daemon` — Telegram channel starts automatically.
+
+To approve one Telegram account at runtime:
+
+```bash
+zeroclaw channel bind-telegram <IDENTITY>
+```
+
+`<IDENTITY>` can be a numeric Telegram user ID or a username (without `@`).
+
+### 4.1 Single Poller Rule (Important)
+
+Telegram Bot API `getUpdates` supports only one active poller per bot token.
+
+- Keep one runtime instance for the same token (recommended: `zeroclaw daemon` service).
+- Do not run `cargo run -- channel start` or another bot process at the same time.
+
+If you hit this error:
+
+`Conflict: terminated by other getUpdates request`
+
+you have a polling conflict. Stop extra instances and restart only one daemon.
 
 ---
 
@@ -156,13 +177,13 @@ provider = "ngrok"
 
 Or run ngrok manually:
 ```bash
-ngrok http 8080
+ngrok http 3000
 # Use the HTTPS URL for your webhook
 ```
 
 ### 5.3 Cloudflare Tunnel
 
-Configure Cloudflare Tunnel to forward to `127.0.0.1:8080`, then set your webhook URL to the tunnel's public hostname.
+Configure Cloudflare Tunnel to forward to `127.0.0.1:3000`, then set your webhook URL to the tunnel's public hostname.
 
 ---
 
@@ -170,7 +191,7 @@ Configure Cloudflare Tunnel to forward to `127.0.0.1:8080`, then set your webhoo
 
 - [ ] Build with `--features hardware` (and `peripheral-rpi` if using native GPIO)
 - [ ] Configure `[peripherals]` and `[channels_config.telegram]`
-- [ ] Run `zeroclaw daemon --host 127.0.0.1 --port 8080` (Telegram works without 0.0.0.0)
+- [ ] Run `zeroclaw daemon --host 127.0.0.1 --port 3000` (Telegram works without 0.0.0.0)
 - [ ] For LAN access: `--host 0.0.0.0` + `allow_public_bind = true` in config
 - [ ] For webhooks: use Tailscale, ngrok, or Cloudflare tunnel
 
